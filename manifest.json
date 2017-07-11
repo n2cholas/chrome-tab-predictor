@@ -3,16 +3,14 @@
   "version": "0.0.1",
   "manifest_version": 2,
   "description": "This chrome extension will use the user's history to predictively open a web-page every time a new tab is opened.",
-  "homepage_url": "",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "default_locale": "en",
   "background": {
     "scripts": [
-      "src/bg/background.js"
+      "background.js"
     ],
     "persistent": false
   },
