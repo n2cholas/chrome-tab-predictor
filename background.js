@@ -19,7 +19,7 @@ function timeElapsed() {
 
 function openTabs() {
 	//get top links
-	var links = ["https://www.facebook.com/", "https://www.reddit.com/"
+	var links = ["https://www.facebook.com/", "https://www.reddit.com/"];
 	links.forEach(function(link) {
 		properties = {
 			string: link
