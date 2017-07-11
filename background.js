@@ -31,10 +31,7 @@ function openTabs() {
 function gotoLink() {
 	//get top link
 	var link = "https://www.facebook.com/";
-	properties = {
-		string: link
-	}
-	chrome.tabs.create(properties); //find a way to highlight bar
+	chrome.tabs.update({ url: link }); //find a way to highlight bar
 }
 
 chrome.runtime.onInstalled.addListener(
