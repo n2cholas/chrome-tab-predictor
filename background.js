@@ -18,14 +18,11 @@ function timeElapsed() {
 }
 
 function openTabs() {
-	//get top links
-	var links = ["https://www.facebook.com/", "https://www.reddit.com/"];
-	links.forEach(function(link) {
-		properties = {
-			url: link
-		}
-		chrome.tabs.create(properties); //find a way to highlight bar
-	});
+	//get number of links
+	var num = 3;
+	for (var i = 0; i<num; i++) {
+		chrome.tabs.create(()); //nothing else needed because gotoLink will handle opening sites
+	}
 }
 
 function gotoLink() {
