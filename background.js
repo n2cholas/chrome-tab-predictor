@@ -1,7 +1,7 @@
 var retrainTime = 7;
 
 function trainOnInstall () {
-	chrome.history.search({text: '', startTime: ??? }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
+	chrome.history.search({text: '', startTime: 0 }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
 		data.forEach(function(page) {
 			//create training data idk
 		});
@@ -19,6 +19,7 @@ function timeElapsed() {
 
 function openTabs() {
 	//get top links
+	var links = ["https://www.facebook.com/", "https://www.reddit.com/"
 	links.forEach(function(link) {
 		properties = {
 			string: link
@@ -29,6 +30,7 @@ function openTabs() {
 
 function gotoLink() {
 	//get top link
+	var link = "https://www.facebook.com/";
 	properties = {
 		string: link
 	}
