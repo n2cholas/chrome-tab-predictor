@@ -1,13 +1,54 @@
-// if you checked "fancy-settings" in extensionizr.com, uncomment this lines
+var retrainTime = 7;
 
-// var settings = new Store("settings", {
-//     "sample_setting": "This is how you use Store.js to remember values"
-// });
+function trainOnInstall () {
+	chrome.history.search({text: '', startTime: ??? }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
+		data.forEach(function(page) {
+			//create training data idk
+		});
+		//train
+	});
+}
 
+function retrain() {
+	//idk how this is going to work
+}
 
-//example of using a message handler from the inject scripts
-chrome.extension.onMessage.addListener(
-  function(request, sender, sendResponse) {
-  	chrome.pageAction.show(sender.tab.id);
-    sendResponse();
+function timeElapsed() {
+	//read from text file and determine time difference
+}
+
+function openTabs() {
+	//get top links
+	links.forEach(function(link) {
+		properties = {
+			string: link
+		}
+		chrome.tabs.create(properties); //find a way to highlight bar
+	});
+}
+
+function gotoLink() {
+	//get top link
+	properties = {
+		string: link
+	}
+	chrome.tabs.create(properties); //find a way to highlight bar
+}
+
+chrome.runtime.onInstalled.addListener(
+  function(details) {
+	  trainOnInstall();
+  });
+  
+chrome.runtime.onStartup.addListener(
+  function() {
+	  openTabs();
+	  if (timeElapsed()>retrainTime) {
+		  retrain();
+	  }
+  });
+ 
+chrome.tabs.onCreated.addListener(
+  function() {
+	  gotoLink();
   });
