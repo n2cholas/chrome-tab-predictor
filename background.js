@@ -22,7 +22,7 @@ function openTabs() {
 	var links = ["https://www.facebook.com/", "https://www.reddit.com/"];
 	links.forEach(function(link) {
 		properties = {
-			string: link
+			url: link
 		}
 		chrome.tabs.create(properties); //find a way to highlight bar
 	});
