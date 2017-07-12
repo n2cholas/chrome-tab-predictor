@@ -3,10 +3,14 @@ var retrainTime = 7;
 function trainOnInstall () {
 	chrome.history.search({text: '', startTime: 0 }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
 		data.forEach(function(page) {
-			//create training data idk
+			chrome.history.getVisits({url: 'page.url'}, function(visits) {
+				data.forEach(function(visit) {
+					//create training data idk
+				});
+			});
 		});
-		//train
 	});
+	//not sure where to start training, since all these are asynchronous
 }
 
 function retrain() {
