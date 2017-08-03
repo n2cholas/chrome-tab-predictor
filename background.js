@@ -1,6 +1,7 @@
 var retrainTime = 7*2400*1000; //num of milliseconds in a week
 
 function trainOnInstall () {
+	/*
 	chrome.storage.sync.set({'count': 0}, function() {
 		chrome.history.search({text: '', startTime: 0 }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function(page) {
@@ -8,7 +9,7 @@ function trainOnInstall () {
 					data.forEach(function(visit) {
 						//create training data idk
 						chrome.storage.sync.get({'count'}, function(count) {
-							chrome.storage.sync.set({'id': count, count+'.url': page.url, count+'.time': page.visitTime}, function() {
+							chrome.storage.sync.set({'id': count, count + '.url': page.url, count+'.time': page.visitTime}, function() {
 							});
 						});
 					});
@@ -16,6 +17,7 @@ function trainOnInstall () {
 			});
 		});
 	});
+	*/
 	//not sure where to start training, since all these are asynchronous
 	//do some training
 	//snippet of code that writes thetas
@@ -34,20 +36,25 @@ function retrain() {
 }
 
 function timeElapsed() {
+	/*
 	return chrome.storage.sync.get({'date'}, function (date) {
 		var parseDate = date.split('/');
 		var lastDate = new Date(number(parseDate[0]),number(parseDate[1]),number(parseDate[2]));
 		var today = new Date();
 		return lastDate.getTime()-today.getTime();
 	});
+	*/
 }
 
 function openTabs() {
 	//get number of links
+	/*
 	var num = 3;
 	for (var i = 0; i<num; i++) {
 		chrome.tabs.create(()); //nothing else needed because gotoLink will handle opening sites
 	}
+	*/
+	gotoLink();
 }
 
 function gotoLink() {
