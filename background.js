@@ -20,6 +20,25 @@ function trainOnInstall () {
 	*/
 	//not sure where to start training, since all these are asynchronous
 	//do some training
+
+	//--------------------------------------Neural Network Stuff
+	var input = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
+	var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
+	var output = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
+
+	input.project(hidden); //fully connects input to hidden layer
+	hidden.project(output); //full connects hidden layer to output
+
+	//we need some training data in this format: 
+	/*
+		var trainingData = [
+    		{input: [1, 0], output: [1, 0, 0]}, // Clap -> Sit
+    		{input: [0, 1], output: [0, 1, 0]}, // Whistle -> Run
+    		{input: [1, 1], output: [0, 0, 1]}, // Clap+Whistle -> Jump
+		];
+		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
+	*/
+
 	//snippet of code that writes thetas
 	var thetas = [0,0,0];
 	chrome.storage.sync.set({'thetas': thetas}, function() {
