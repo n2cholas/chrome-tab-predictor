@@ -8,7 +8,7 @@ var historyTime = 30*2400*1000; //num of milliseconds in a month
 var maxUrlNumber = 25; //most possible urls to open
 
 //
-var siteList = [''] //array of top website names
+var siteList = ['']; //array of top website names
 
 var contains = function(needle) { //ripped off stackoverflow
     // Per spec, the way to identify NaN is that it is not equal to itself
@@ -19,7 +19,8 @@ var contains = function(needle) { //ripped off stackoverflow
         indexOf = Array.prototype.indexOf;
     } else {
         indexOf = function(needle) {
-            var i = -1, index = -1;
+            var i = -1;
+			var index = -1;
 
             for(i = 0; i < this.length; i++) {
                 var item = this[i];
@@ -45,7 +46,7 @@ function trainOnInstall () {
 				chrome.history.getVisits({url: page.url}, function(visits) {
 					data.forEach(function(visit) {
 						//create training data idk
-						chrome.storage.sync.get({'count'}, function(count) {
+						chrome.storage.sync.get('count', function(count) {
 							chrome.storage.sync.set({count + '.id': count, count + '.url': page.url, count+'.time': page.visitTime}, function() {
 								chrome.storage.sync.get({'count'}, function(count) {
 									chrome.storage.sync.set({'count': count + 1}, function(count) {});
@@ -61,9 +62,9 @@ function trainOnInstall () {
 	//not sure where to start training, since all these are asynchronous
 	//read in all data and sort/parse urls
 	var list = {};
-	chrome.storage.sync.get({'count'}, function(count) {
+	chrome.storage.sync.get('count', function(count) {
 		for (var i = 0; i<count; i++) {
-			chrome.storage.sync.get({i + '.url'}, function (url) {
+			chrome.storage.sync.get(i + '.url', function (url) {
 				if (url in list)
 					list[url] = list[url]+1;
 				else
@@ -73,9 +74,9 @@ function trainOnInstall () {
 	});
 	//still don't know how to do things at the end of async functions
 	keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
-	chrome.storage.sync.get({'count'}, function(count) { //extremely inefficient probably
+	chrome.storage.sync.get('count', function(count) { //extremely inefficient probably
 		for (var i = 0; i<count; i++) {
-			chrome.storage.sync.get({i + '.url'}, function (url) {
+			chrome.storage.sync.get(i + '.url', function (url) {
 				if (contains.call(keysSorted,url)) {
 					//get date, time etc for training
 				}
@@ -154,7 +155,7 @@ function openTabs() {
 function gotoLink(link) {
 	//get top link
 	//var link = "https://www.facebook.com/";
-	chrome.tabs.update({ url: link }); //find a way to highlight bar <--@Lawrence it already does? Solved?
+	chrome.tabs.update({ url: link }); 
 }
 
 chrome.runtime.onInstalled.addListener(
@@ -172,5 +173,5 @@ chrome.runtime.onStartup.addListener(
  
 chrome.tabs.onCreated.addListener(
   function() {
-	  openTabs(); // @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs
+	  gotoLink(); // @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs // i intended opentabs to be for multiple tabs on startup sorry the naming is confusing
   });
