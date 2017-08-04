@@ -38,16 +38,16 @@ var contains = function(needle) { //ripped off stackoverflow
 
 function trainOnInstall () {
 	/*
-	chrome.storage.sync.set({'count': 0}, function() {
+	StorageArea.set({'count': 0}, function() {
 		chrome.history.search({text: '', startTime: Date.now()-historyTime }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function(page) {
 				chrome.history.getVisits({url: page.url}, function(visits) {
 					data.forEach(function(visit) {
 						//create training data idk
-						chrome.storage.sync.get('count', function(count) {
-							chrome.storage.sync.set({count + '.id': count, count + '.url': page.url, count+'.time': page.visitTime}, function() {
-								chrome.storage.sync.get({'count'}, function(count) {
-									chrome.storage.sync.set({'count': count + 1}, function(count) {});
+						StorageArea.get('count', function(count) {
+							StorageArea.set({count + '.id': count, count + '.url': page.url, count+'.time': page.visitTime}, function() {
+								StorageArea.get({'count'}, function(count) {
+									StorageArea.set({'count': count + 1}, function(count) {});
 								});
 							});
 						});
@@ -60,9 +60,9 @@ function trainOnInstall () {
 	//not sure where to start training, since all these are asynchronous
 	//read in all data and sort/parse urls
 	var list = {};
-	chrome.storage.sync.get('count', function(count) {
+	StorageArea.get('count', function(count) {
 		for (var i = 0; i<count; i++) {
-			chrome.storage.sync.get(i + '.url', function (url) {
+			StorageArea.get(i + '.url', function (url) {
 				if (url in list)
 					list[url] = list[url]+1; //@Lawrence pre sure list[url]++ works
 				else
@@ -74,9 +74,9 @@ function trainOnInstall () {
 	//still don't know how to do things at the end of async functions
 	var keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
 	var trainingData = {};
-	chrome.storage.sync.get('count', function(count) { //extremely inefficient probably
+	StorageArea.get('count', function(count) { //extremely inefficient probably
 		for (var i = 0; i<count; i++) {
-			chrome.storage.sync.get(i + '.url', function (url) {
+			StorageArea.get(i + '.url', function (url) {
 				if (contains.call(keysSorted,url)) {
 					//get date, time etc for training
 				}
@@ -101,11 +101,11 @@ function trainOnInstall () {
 	});
 
 	//@Lawrence you save the entire network as a JSON not just the thetas
-	chrome.storage.sync.set({'myNetwork': myNetwork.toJSON()}, function() {
+	StorageArea.set({'myNetwork': myNetwork.toJSON()}, function() {
 		message('Neural Network Saved'); //@Debugging MessageBox
 	});
 	//set date
-	chrome.storage.sync.set({'time': Date.now()}, function() {
+	StorageArea.set({'time': Date.now()}, function() {
 		message('Date Saved'); //@Debugging MessageBox
 	});
 }
