@@ -35,7 +35,7 @@ var contains = function(needle) { //ripped off stackoverflow
         };
     }
 
-    return indexOf.call(this, needle) > -1;
+    return indexOf.call(this, needle);
 };
 
 function trainOnInstall () {
@@ -73,7 +73,8 @@ function trainOnInstall () {
 		}
 	});
 	//still don't know how to do things at the end of async functions
-	keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
+	var keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
+	var trainingData = {};
 	chrome.storage.sync.get('count', function(count) { //extremely inefficient probably
 		for (var i = 0; i<count; i++) {
 			chrome.storage.sync.get(i + '.url', function (url) {
