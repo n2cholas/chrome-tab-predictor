@@ -1,6 +1,14 @@
+//--------------------------------------Neural Network Stuff
+var input = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
+var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
+var output = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
+
 var retrainTime = 7*2400*1000; //num of milliseconds in a week
 var historyTime = 30*2400*1000; //num of milliseconds in a month
 var maxUrlNumber = 25; //most possible urls to open
+
+//
+var siteList = [''] //array of top website names
 
 var contains = function(needle) { //ripped off stackoverflow
     // Per spec, the way to identify NaN is that it is not equal to itself
@@ -54,7 +62,7 @@ function trainOnInstall () {
 	//read in all data and sort/parse urls
 	var list = {};
 	chrome.storage.sync.get({'count'}, function(count) {
-		for (int i = 0; i<count; i++) {
+		for (var i = 0; i<count; i++) {
 			chrome.storage.sync.get({i + '.url'}, function (url) {
 				if (url in list)
 					list[url] = list[url]+1;
@@ -66,7 +74,7 @@ function trainOnInstall () {
 	//still don't know how to do things at the end of async functions
 	keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
 	chrome.storage.sync.get({'count'}, function(count) { //extremely inefficient probably
-		for (int i = 0; i<count; i++) {
+		for (var i = 0; i<count; i++) {
 			chrome.storage.sync.get({i + '.url'}, function (url) {
 				if (contains.call(keysSorted,url)) {
 					//get date, time etc for training
@@ -75,11 +83,6 @@ function trainOnInstall () {
 		}
 	});
 	//do some training
-
-	//--------------------------------------Neural Network Stuff
-	var input = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
-	var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
-	var output = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
 
 	input.project(hidden); //fully connects input to hidden layer
 	hidden.project(output); //full connects hidden layer to output
@@ -103,8 +106,15 @@ function trainOnInstall () {
 	});
 }
 
-function retrain() {
+function retrain(trainingData) {
 	//idk how this is going to work
+	var learningRate = 0.4;
+ 
+	for(var i = 0; i < trainingData.length; i++) {
+		input.activate(trainingData[i]["input"]);
+		output.activate();
+		output.propagate(learningRate, trainingData[i]["output"]);
+	}
 }
 
 function timeElapsed() {
@@ -123,13 +133,28 @@ function openTabs() {
 		chrome.tabs.create(()); //nothing else needed because gotoLink will handle opening sites
 	}
 	*/
-	gotoLink();
+
+	//Code below uses current day and time to get an output from neural network
+	//I can condense the below code but for now leave it verbose just in case
+	var curTime = new Date(); //stores current datetime
+	var curHour = curTime.getHours(); //current hour (0 to 23)
+	var curDay = curTime.getDay(); //current day of week (0 to 6)
+
+	var inputArray = new Array(24+7).fill(0); //input data placeholder
+	inputArray[curHour] = 1; //fill in hour of day into input array
+	inputArray[curDay + 24] = 1; //fill in day of week
+	input.activate(inputArray); //inputs data into neural network
+	var result = output.activate(); //gets the output of the neural network (probabilities)
+
+	//need to get current tabs, and choose output so there are no duplicate tabs
+
+	gotoLink(siteList[result]);
 }
 
-function gotoLink() {
+function gotoLink(link) {
 	//get top link
-	var link = "https://www.facebook.com/";
-	chrome.tabs.update({ url: link }); //find a way to highlight bar
+	//var link = "https://www.facebook.com/";
+	chrome.tabs.update({ url: link }); //find a way to highlight bar <--@Lawrence it already does? Solved?
 }
 
 chrome.runtime.onInstalled.addListener(
@@ -147,5 +172,5 @@ chrome.runtime.onStartup.addListener(
  
 chrome.tabs.onCreated.addListener(
   function() {
-	  gotoLink();
+	  openTabs(); // @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs
   });
