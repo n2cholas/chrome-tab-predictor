@@ -1,7 +1,5 @@
-//--------------------------------------Neural Network Stuff
-var input = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
-var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
-var output = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
+var myNetwork; //will be network
+
 
 var retrainTime = 7*2400*1000; //num of milliseconds in a week
 var historyTime = 30*2400*1000; //num of milliseconds in a month
@@ -66,12 +64,13 @@ function trainOnInstall () {
 		for (var i = 0; i<count; i++) {
 			chrome.storage.sync.get(i + '.url', function (url) {
 				if (url in list)
-					list[url] = list[url]+1;
+					list[url] = list[url]+1; //@Lawrence pre sure list[url]++ works
 				else
 					list[url] = 0;
 			});
 		}
 	});
+
 	//still don't know how to do things at the end of async functions
 	keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
 	chrome.storage.sync.get('count', function(count) { //extremely inefficient probably
@@ -85,9 +84,32 @@ function trainOnInstall () {
 	});
 	//do some training
 
-	input.project(hidden); //fully connects input to hidden layer
-	hidden.project(output); //full connects hidden layer to output
+	//--------------------------------------Neural Network Stuff
+	var inputLayer = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
+	var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
+	var outputLayer = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
 
+	//maybe first get the neural network from the storage first, then if not, activate below code
+	inputLayer.project(hidden); //fully connects input to hidden layer
+	hidden.project(outputLayer); //full connects hidden layer to output
+
+	myNetwork = new Network({
+		input: inputLayer,
+		hidden: [hiddenLayer],
+		output: outputLayer
+	});
+
+	//@Lawrence you save the entire network as a JSON not just the thetas
+	chrome.storage.sync.set({'myNetwork': myNetwork.toJSON()}, function() {
+		message('Neural Network Saved'); //@Debugging MessageBox
+	});
+	//set date
+	chrome.storage.sync.set({'time': Date.now()}, function() {
+		message('Date Saved'); //@Debugging MessageBox
+	});
+}
+
+function getTrainingData() {
 	//we need some training data in this format: 
 	/*
 		var trainingData = [
@@ -97,44 +119,25 @@ function trainOnInstall () {
 		];
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
-
-	//snippet of code that writes thetas
-	var thetas = [0,0,0];
-	chrome.storage.sync.set({'thetas': thetas}, function() {
-	});
-	//set date
-	chrome.storage.sync.set({'time': Date.now()}, function() {
-	});
 }
 
-function retrain(trainingData) {
-	//idk how this is going to work
+function retrain() {
+	trainingData = getTrainingData();
 	var learningRate = 0.4;
  
 	for(var i = 0; i < trainingData.length; i++) {
-		input.activate(trainingData[i]["input"]);
-		output.activate();
-		output.propagate(learningRate, trainingData[i]["output"]);
+		myNetwork.activate(trainingData[i]["input"]);
+		myNetwork.propagate(learningRate, trainingData[i]["output"]);
 	}
 }
 
 function timeElapsed() {
-	/*
-	return chrome.storage.sync.get({'date'}, function (date) {
+	return StorageArea.get('date', function (date) {
 		return Date.now()-date;
-	});
-	*/
+	}); //@Lawrence I think this is how you retrieve data
 }
 
 function openTabs() {
-	//get number of links
-	/*
-	var num = 3;
-	for (var i = 0; i<num; i++) {
-		chrome.tabs.create(()); //nothing else needed because gotoLink will handle opening sites
-	}
-	*/
-
 	//Code below uses current day and time to get an output from neural network
 	//I can condense the below code but for now leave it verbose just in case
 	var curTime = new Date(); //stores current datetime
@@ -144,17 +147,10 @@ function openTabs() {
 	var inputArray = new Array(24+7).fill(0); //input data placeholder
 	inputArray[curHour] = 1; //fill in hour of day into input array
 	inputArray[curDay + 24] = 1; //fill in day of week
-	input.activate(inputArray); //inputs data into neural network
-	var result = output.activate(); //gets the output of the neural network (probabilities)
+	var result = myNetwork.activate(inputArray); //gets the output of the neural network (probabilities)
 
 	//need to get current tabs, and choose output so there are no duplicate tabs
 
-	gotoLink(siteList[result]);
-}
-
-function gotoLink(link) {
-	//get top link
-	//var link = "https://www.facebook.com/";
 	chrome.tabs.update({ url: link }); 
 }
 
@@ -165,6 +161,7 @@ chrome.runtime.onInstalled.addListener(
   
 chrome.runtime.onStartup.addListener(
   function() {
+	  myNetwork = Network.fromJSON(StorageArea.get('myNetwork'));
 	  openTabs();
 	  if (timeElapsed()>retrainTime) {
 		  retrain();
@@ -173,5 +170,8 @@ chrome.runtime.onStartup.addListener(
  
 chrome.tabs.onCreated.addListener(
   function() {
-	  gotoLink(); // @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs // i intended opentabs to be for multiple tabs on startup sorry the naming is confusing
+	  openTabs(); 
   });
+	// @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs 
+	// i intended opentabs to be for multiple tabs on startup sorry the naming is confusing
+	// @Lawrence I'm removing goto links for now, we'll implement multiple tabs later
