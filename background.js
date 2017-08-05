@@ -3,7 +3,7 @@ var myNetwork; //will be network
 
 var retrainTime = 7*2400*1000; //num of milliseconds in a week
 var historyTime = 30*2400*1000; //num of milliseconds in a month
-var maxUrlNumber = 25; //most possible urls to open
+var maxUrlNumber = 20; //most possible urls to open
 
 //
 var siteList = ['']; //array of top website names
@@ -37,53 +37,7 @@ var contains = function(needle) { //ripped off stackoverflow
 };
 
 function trainOnInstall () {
-	/*
-	StorageArea.set({'count': 0}, function() {
-		chrome.history.search({text: '', startTime: Date.now()-historyTime }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
-			data.forEach(function(page) {
-				chrome.history.getVisits({url: page.url}, function(visits) {
-					data.forEach(function(visit) {
-						//create training data idk
-						StorageArea.get('count', function(count) {
-							StorageArea.set({count + '.id': count, count + '.url': page.url, count+'.time': page.visitTime}, function() {
-								StorageArea.get({'count'}, function(count) {
-									StorageArea.set({'count': count + 1}, function(count) {});
-								});
-							});
-						});
-					});
-				});
-			});
-		});
-	});
-	*/
-	//not sure where to start training, since all these are asynchronous
-	//read in all data and sort/parse urls
-	var list = {};
-	StorageArea.get('count', function(count) {
-		for (var i = 0; i<count; i++) {
-			StorageArea.get(i + '.url', function (url) {
-				if (url in list)
-					list[url] = list[url]+1; //@Lawrence pre sure list[url]++ works
-				else
-					list[url] = 0;
-			});
-		}
-	});
-
-	//still don't know how to do things at the end of async functions
-	var keysSorted = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
-	var trainingData = {};
-	StorageArea.get('count', function(count) { //extremely inefficient probably
-		for (var i = 0; i<count; i++) {
-			StorageArea.get(i + '.url', function (url) {
-				if (contains.call(keysSorted,url)) {
-					//get date, time etc for training
-				}
-			});
-		}
-	});
-	//do some training
+	trainingData = getTrainingData(); //not sure where to put this?
 
 	//--------------------------------------Neural Network Stuff
 	var inputLayer = new synaptic.Layer(24+7); // the 24 inputs for hour, 7 inputs for day
@@ -109,7 +63,11 @@ function trainOnInstall () {
 		message('Date Saved'); //@Debugging MessageBox
 	});
 }
-
+/*
+function readHistoryInnerAsync(count,promises) {
+	promises.push(new Promise(function(res,rej){}));
+}
+*/
 function getTrainingData() {
 	//we need some training data in this format: 
 	/*
@@ -120,6 +78,62 @@ function getTrainingData() {
 		];
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
+	//var promises = [];
+	StorageArea.set({'count': 0}, function() {
+		chrome.history.search({text: '', startTime: Date.now()-historyTime }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
+			data.forEach(function(page) {
+				chrome.history.getVisits({url: page.url}, function(visits) {
+					data.forEach(function(visit) {
+						//create training data idk
+						StorageArea.get('count', function(count) {
+							StorageArea.set({count + '.id': count, count + '.url': page.url.split('/')[0], count+'.time': page.visitTime}, function() {
+								StorageArea.get({'count'}, function(count) {
+									StorageArea.set({'count': count + 1}, function(){});
+								});
+							});
+						});
+					});
+				});
+			});
+		});
+	});
+	
+	//not sure where to start training, since all these are asynchronous
+	//read in all data and sort/parse urls
+	var list = {};
+	StorageArea.get('count', function(count) {
+		for (var i = 0; i<count; i++) {
+			StorageArea.get(i + '.url', function (url) {
+				if (url in list)
+					list[url]++; //@Lawrence pre sure list[url]++ works
+				else
+					list[url] = 0;
+			});
+		}
+	});
+
+	//still don't know how to do things at the end of async functions
+	var siteList = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
+	var trainingData = [];
+	StorageArea.get('count', function(count) { //extremely inefficient probably
+		for (var i = 0; i<count; i++) {
+			StorageArea.get(i + '.url', function (url) {
+				if (contains.call(siteList,url)>-1) {
+					//get date, time etc for training
+					var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf,0);
+					var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf,0);
+					outputArray[contains.call(siteList,url)] = 1;
+					StorageArea.get(i+'.time', function (time) {
+						var date = new Date(time);
+						inputArray[date.getHours()] = 1;
+						inputArray[date.getDay()+24] = 1;
+					}
+					trainingData.push({input: inputArray, output: outputArray});
+				}
+			});
+		}
+	});
+	return trainingData;
 }
 
 function retrain() {
