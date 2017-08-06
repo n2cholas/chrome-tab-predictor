@@ -79,6 +79,7 @@ function getTrainingData() {
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
 	//var promises = [];
+	var requests = 0;
 	StorageArea.set({'count': 0}, function() {
 		chrome.history.search({text: '', startTime: Date.now()-historyTime }, function(data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function(page) {
@@ -88,7 +89,10 @@ function getTrainingData() {
 						StorageArea.get('count', function(count) {
 							StorageArea.set({count + '.id': count, count + '.url': page.url.split('/')[0], count+'.time': page.visitTime}, function() {
 								StorageArea.get({'count'}, function(count) {
-									StorageArea.set({'count': count + 1}, function(){});
+									StorageArea.set({'count': count + 1}, function(){
+										requests--;
+									});
+									requests++;
 								});
 							});
 						});
@@ -97,10 +101,16 @@ function getTrainingData() {
 			});
 		});
 	});
-	
+	if (!requests) {
+		processHistory();
+	}
+}
+
+function processHistory() {
 	//not sure where to start training, since all these are asynchronous
 	//read in all data and sort/parse urls
 	var list = {};
+	var requests = 0;
 	StorageArea.get('count', function(count) {
 		for (var i = 0; i<count; i++) {
 			StorageArea.get(i + '.url', function (url) {
@@ -108,18 +118,27 @@ function getTrainingData() {
 					list[url]++; //@Lawrence pre sure list[url]++ works
 				else
 					list[url] = 0;
+				requests--;
 			});
+			requests++;
 		}
 	});
+	if (!requests) {
+		formatData();
+	}
+}
 
+function formatData() {
 	//still don't know how to do things at the end of async functions
 	var siteList = Object.keys(list).sort(function(a,b){return list[a]-list[b]}).slice(maxUrlNumber); //array of urls
 	var trainingData = [];
+	var requests = 0;
 	StorageArea.get('count', function(count) { //extremely inefficient probably
 		for (var i = 0; i<count; i++) {
 			StorageArea.get(i + '.url', function (url) {
 				if (contains.call(siteList,url)>-1) {
 					//get date, time etc for training
+					var innerRequests = 0;
 					var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf,0);
 					var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf,0);
 					outputArray[contains.call(siteList,url)] = 1;
@@ -127,13 +146,21 @@ function getTrainingData() {
 						var date = new Date(time);
 						inputArray[date.getHours()] = 1;
 						inputArray[date.getDay()+24] = 1;
+						innerRequests--;
 					}
-					trainingData.push({input: inputArray, output: outputArray});
+					innerRequests++;
+					if (!innerRequests) {
+						trainingData.push({input: inputArray, output: outputArray});
+					}
 				}
+				requests--;
 			});
+			requests++;
 		}
 	});
-	return trainingData;
+	if (!requests) {
+		return trainingData;
+	}
 }
 
 function retrain() {
