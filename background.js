@@ -84,38 +84,48 @@ function getTrainingData() {
 	//var promises = [];
 	console.log('started getTrainingData');
 
-	var requests = 0;
-	StorageArea.set({ 'count': 0 }, function () {
+	var list = {};
+	//var requests = 0;
+	//StorageArea.set({ 'count': 0 }, function () {
 		chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function (page) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
-					data.forEach(function (visit) {
+					visits.forEach(function (visit) {
+						url = page.url.split('/')[2];
+						if (url in list)
+							list[url]++; //@Lawrence pre sure list[url]++ works
+						else
+							list[url] = 0;
+						//requests--;
 						//create training data idk
+						/*
 						StorageArea.get('count', function (count) {
 							StorageArea.set({ [count + '.id']: count, [count + '.url']: page.url.split('/')[0], [count + '.time']: page.visitTime }, function () { //@Lawrence the square brackets fix this
 								StorageArea.get('count', function (count) {
 									StorageArea.set({ 'count': count + 1 }, function () {
+										console.log(count);
 										requests--;
 									});
 									requests++;
 								});
 							});
 						});
+						*/
 					});
 				});
 			});
 		});
-	});
-	if (!requests) {
+	//});
+	//if (!requests) {
 		setTimeout(function(){
-			console.log(requests);
-			processHistory();
+			console.log(list);
+			formatData(list);
 		},delay); //hopefully this works
-	}
+	//}
 
 	console.log('done getTrainingData');
 }
-
+/*
 function processHistory() {
 	//not sure where to start training, since all these are asynchronous
 	//read in all data and sort/parse urls
@@ -144,45 +154,50 @@ function processHistory() {
 
 	console.log('done processHistory');
 }
-
+*/
 function formatData(list) {
 	console.log('started formatData');
 
 	//still don't know how to do things at the end of async functions
 	var siteList = Object.keys(list).sort(function (a, b) { return list[a] - list[b] }).slice(maxUrlNumber); //array of urls
+	console.log(siteList);
 	var trainingData = [];
-	var requests = 0;
-	StorageArea.get('count', function (count) { //extremely inefficient probably
-		for (var i = 0; i < count; i++) {
-			StorageArea.get(i + '.url', function (url) {
-				if (contains.call(siteList, url) > -1) {
-					//get date, time etc for training
-					var innerRequests = 0;
-					var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
-					var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf, 0);
-					outputArray[contains.call(siteList, url)] = 1;
-					StorageArea.get(i + '.time', function (time) {
-						var date = new Date(time);
+	//var requests = 0;
+	chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) {
+		data.forEach(function (page) {
+			var url = page.url.split('/')[2];
+			console.log(contains.call(siteList, url));
+			if (contains.call(siteList, url) > -1) {
+				chrome.history.getVisits({ url: page.url }, function (visits) {
+					console.log("visit");
+					visits.forEach(function (visit) {
+						//get date, time etc for training
+						//var innerRequests = 0;
+						var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
+						var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf, 0);
+						outputArray[contains.call(siteList, url)] = 1;
+						var date = new Date(visit.visitTime);
 						inputArray[date.getHours()] = 1;
 						inputArray[date.getDay() + 24] = 1;
-						innerRequests--;
-					})
-					innerRequests++;
-					if (!innerRequests) {
+							//innerRequests--;
+						//innerRequests++;
+						console.log(inputArray);
+						console.log(outputArray);
 						trainingData.push({ input: inputArray, output: outputArray });
-					}
-				}
-				requests--;
-			});
-			requests++;
-		}
+						console.log(trainingData);
+					//requests--;
+					});
+				});
+			//requests++;
+			}
+		});
 	});
-	if (!requests) {
+	//if (!requests) {
 		setTimeout(function(){
-		    console.log('return data');
+		    console.log(trainingData);
 			return trainingData;
 		},delay);
-	}
+	//}
 
 	console.log('done formatData');
 }
