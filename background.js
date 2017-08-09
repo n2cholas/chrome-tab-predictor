@@ -1,7 +1,8 @@
 var myNetwork; //will be network
 
 var retrainTime = 7 * 2400 * 1000; //num of milliseconds in a week
-var historyTime = 30 * 2400 * 1000; //num of milliseconds in a month
+var historyTime = 1 * 2400 * 1000; //num of milliseconds in a month
+var delay = 100000;
 var maxUrlNumber = 20; //most possible urls to open
 
 var siteList = ['']; //array of top website names
@@ -55,7 +56,7 @@ function trainOnInstall() {
 		hidden: [hidden],
 		output: outputLayer
 	});
-
+	console.log(myNetwork.toJSON());
 	//@Lawrence you save the entire network as a JSON not just the thetas
 	StorageArea.set({ 'myNetwork': myNetwork.toJSON() }, function () {
 	});
@@ -106,7 +107,10 @@ function getTrainingData() {
 		});
 	});
 	if (!requests) {
-		setTimeout(function(){processHistory();},100000); //hopefully this works
+		setTimeout(function(){
+			console.log(requests);
+			processHistory();
+		},delay); //hopefully this works
 	}
 
 	console.log('done getTrainingData');
@@ -132,7 +136,10 @@ function processHistory() {
 		}
 	});
 	if (!requests) {
-		setTimeout(function(){formatData(list);},100000);
+		setTimeout(function(){
+			console.log(list);
+			formatData(list);
+		},delay);
 	}
 
 	console.log('done processHistory');
@@ -171,7 +178,10 @@ function formatData(list) {
 		}
 	});
 	if (!requests) {
-		setTimeout(function(){return trainingData;},100000);
+		setTimeout(function(){
+		    console.log('return data');
+			return trainingData;
+		},delay);
 	}
 
 	console.log('done formatData');
@@ -223,6 +233,8 @@ function openTabs() {
 	inputArray[curHour] = 1; //fill in hour of day into input array
 	inputArray[curDay + 24] = 1; //fill in day of week
 	var result = myNetwork.activate(inputArray); //gets the output of the neural network (probabilities)
+	console.log(myNetwork.toJSON());
+	console.log(siteList);
 
 	//need to get current tabs, and choose output so there are no duplicate tabs
 	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
