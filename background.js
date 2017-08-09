@@ -106,7 +106,7 @@ function getTrainingData() {
 		});
 	});
 	if (!requests) {
-		processHistory();
+		setTimeout(function(){processHistory();},100000); //hopefully this works
 	}
 
 	console.log('done getTrainingData');
@@ -132,7 +132,7 @@ function processHistory() {
 		}
 	});
 	if (!requests) {
-		formatData(list);
+		setTimeout(function(){formatData(list);},100000);
 	}
 
 	console.log('done processHistory');
@@ -171,7 +171,7 @@ function formatData(list) {
 		}
 	});
 	if (!requests) {
-		return trainingData;
+		setTimeout(function(){return trainingData;},100000);
 	}
 
 	console.log('done formatData');
