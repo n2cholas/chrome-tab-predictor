@@ -1,12 +1,12 @@
 var myNetwork; //will be network
 
-var retrainTime = 7 * 2400 * 1000; //num of milliseconds in a week
-var historyTime = 1 * 2400 * 1000; //num of milliseconds in a month
+var retrainTime = 6.048e+8; //num of milliseconds in a week
+var historyTime = 6.048e+8; //num of milliseconds in a week
 var delay = 100000;
 var maxUrlNumber = 20; //most possible urls to open
 
 var siteList = ['']; //array of top website names
-var numSites = 5;
+var numSites = 20;
 
 var StorageArea = chrome.storage.local;
 
@@ -45,7 +45,7 @@ function trainOnInstall() {
 
 	//--------------------------------------Neural Network Stuff
 	var inputLayer = new synaptic.Layer(24 + 7); // the 24 inputs for hour, 7 inputs for day
-	var hidden = new synaptic.Layer(24 + 7); // hidden layer with 3 elements
+	var hidden = new synaptic.Layer(50); // hidden layer with 3 elements
 	var outputLayer = new synaptic.Layer(numSites); // twenty outputs i.e. twenty sites to choose from
 
 	//maybe first get the neural network from the storage first, then if not, activate below code
