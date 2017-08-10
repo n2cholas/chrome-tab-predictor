@@ -6,6 +6,7 @@ var delay = 100000;
 var maxUrlNumber = 20; //most possible urls to open
 
 var siteList = ['']; //array of top website names
+var numSites = 5;
 
 var StorageArea = chrome.storage.local;
 
@@ -44,8 +45,8 @@ function trainOnInstall() {
 
 	//--------------------------------------Neural Network Stuff
 	var inputLayer = new synaptic.Layer(24 + 7); // the 24 inputs for hour, 7 inputs for day
-	var hidden = new synaptic.Layer(30); // hidden layer with 3 elements
-	var outputLayer = new synaptic.Layer(20); // twenty outputs i.e. twenty sites to choose from
+	var hidden = new synaptic.Layer(24 + 7); // hidden layer with 3 elements
+	var outputLayer = new synaptic.Layer(numSites); // twenty outputs i.e. twenty sites to choose from
 
 	//maybe first get the neural network from the storage first, then if not, activate below code
 	inputLayer.project(hidden); //fully connects input to hidden layer
@@ -160,7 +161,7 @@ function formatData(list) {
 
 	//still don't know how to do things at the end of async functions
 	//console.log(list);
-	var siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
+	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
 	//var requests = 0;
@@ -250,14 +251,14 @@ function openTabs() {
 	inputArray[curHour] = 1; //fill in hour of day into input array
 	inputArray[curDay + 24] = 1; //fill in day of week
 	var result = myNetwork.activate(inputArray); //gets the output of the neural network (probabilities)
-	console.log(myNetwork.toJSON());
-	console.log(siteList);
 
 	//need to get current tabs, and choose output so there are no duplicate tabs
 	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
 	link = siteList[findIndexOfGreatest(result)];	
-	
-	chrome.tabs.update({ url: link });
+	console.log(result)
+	console.log(link)
+
+	chrome.tabs.update({url: 'http://'+link});
 	console.log('done openTabs')
 }
 
