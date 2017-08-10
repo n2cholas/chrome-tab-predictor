@@ -86,13 +86,13 @@ function getTrainingData() {
 	console.log('started getTrainingData');
 
 	var list = {};
-	//var requests = 0;
+	var requests = 0;
 	//StorageArea.set({ 'count': 0 }, function () {
 		chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function (page) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
 					visits.forEach(function (visit) {
-						url = page.url.split('/')[2];
+						var url = page.url.split('/')[0]+'//'+page.url.split('/')[2];
 						if (url in list)
 							list[url]++; //@Lawrence pre sure list[url]++ works
 						else
@@ -113,17 +113,25 @@ function getTrainingData() {
 						});
 						*/
 					});
+					requests--;
 				});
+				requests++;
 			});
 		});
 	//});
-	//if (!requests) {
+	//var flag = false;
+	//while (true) {
 		setTimeout(function(){
-			console.log(list);
-			formatData(list);
+			//if ((!requests)&&flag) {
+				console.log(list);
+				formatData(list);
+				//return;
+			//}
+			//if (!requests) {
+				//flag = true;
+			//}
 		},delay); //hopefully this works
 	//}
-
 	console.log('done getTrainingData');
 }
 /*
@@ -160,14 +168,14 @@ function formatData(list) {
 	console.log('started formatData');
 
 	//still don't know how to do things at the end of async functions
-	//console.log(list);
+	console.log(list);
 	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
-	//var requests = 0;
+	var requests = 0;
 	chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) {
 		data.forEach(function (page) {
-			var url = page.url.split('/')[2];
+			var url = page.url.split('/')[0]+'//'+page.url.split('/')[2];
 			//console.log(url);
 			//console.log(contains.call(siteList, url));
 			if (contains.call(siteList, url) > -1) {
@@ -190,18 +198,24 @@ function formatData(list) {
 						//console.log(trainingData);
 					//requests--;
 					});
+					requests--;
 				});
-			//requests++;
+				requests++;
 			}
 		});
 	});
-	//if (!requests) {
+	//var flag = false;
+	//while (true) {
 		setTimeout(function(){
-		    console.log(trainingData);
-			return trainingData;
-		},delay);
+			//if ((!requests)&&flag) {
+				console.log(trainingData);
+				return trainingData;
+			//}
+			//if (!requests) {
+				//flag = true;
+			//}
+		},delay); //hopefully this works
 	//}
-
 	console.log('done formatData');
 }
 
@@ -236,6 +250,7 @@ function findIndexOfGreatest(array) {
       indexOfGreatest = i;
     }
   }
+  console.log(indexOfGreatest);
   return indexOfGreatest;
 }
 
@@ -258,7 +273,7 @@ function openTabs() {
 	console.log(result)
 	console.log(link)
 
-	chrome.tabs.update({url: 'http://'+link});
+	chrome.tabs.update({url: link});
 	console.log('done openTabs')
 }
 
