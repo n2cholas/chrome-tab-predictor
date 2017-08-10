@@ -159,17 +159,19 @@ function formatData(list) {
 	console.log('started formatData');
 
 	//still don't know how to do things at the end of async functions
-	var siteList = Object.keys(list).sort(function (a, b) { return list[a] - list[b] }).slice(maxUrlNumber); //array of urls
+	//console.log(list);
+	var siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
 	//var requests = 0;
 	chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) {
 		data.forEach(function (page) {
 			var url = page.url.split('/')[2];
-			console.log(contains.call(siteList, url));
+			//console.log(url);
+			//console.log(contains.call(siteList, url));
 			if (contains.call(siteList, url) > -1) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
-					console.log("visit");
+					//console.log("visit");
 					visits.forEach(function (visit) {
 						//get date, time etc for training
 						//var innerRequests = 0;
@@ -181,10 +183,10 @@ function formatData(list) {
 						inputArray[date.getDay() + 24] = 1;
 							//innerRequests--;
 						//innerRequests++;
-						console.log(inputArray);
-						console.log(outputArray);
+						//console.log(inputArray);
+						//console.log(outputArray);
 						trainingData.push({ input: inputArray, output: outputArray });
-						console.log(trainingData);
+						//console.log(trainingData);
 					//requests--;
 					});
 				});
