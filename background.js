@@ -2,11 +2,17 @@ var myNetwork; //will be network
 
 var retrainTime = 6.048e+8; //num of milliseconds in a week
 var historyTime = 6.048e+8; //num of milliseconds in a week
-var delay = 100000;
+var delay = 10000; //10s 
+var openTime = 500;
+var ignoreTime = 3600000; //1 hr
 var maxUrlNumber = 20; //most possible urls to open
+var maxPages = 2147483647; //largest possible integer
 
 var siteList = ['']; //array of top website names
 var numSites = 20;
+//var lastVisitTimes = Array.apply(null, Array(numSites)).map(Number.prototype.valueOf, 0);
+
+var defaultTabUrl = 'chrome://newtab/'; //if the user has changed their new tab url - idk how to get this from the api
 
 var StorageArea = chrome.storage.local;
 
@@ -37,6 +43,10 @@ var contains = function (needle) { //ripped off stackoverflow
 
 	return indexOf.call(this, needle);
 };
+
+function parseUrl(url) {
+	return url.split('/')[0]+'//'+url.split('/')[2];
+}
 
 function trainOnInstall() {
 	console.log('trainOnInstall started');
@@ -88,11 +98,11 @@ function getTrainingData() {
 	var list = {};
 	var requests = 0;
 	//StorageArea.set({ 'count': 0 }, function () {
-		chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
+		chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function (page) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
 					visits.forEach(function (visit) {
-						var url = page.url.split('/')[0]+'//'+page.url.split('/')[2];
+						var url = parseUrl(page.url);
 						if (url in list)
 							list[url]++; //@Lawrence pre sure list[url]++ works
 						else
@@ -114,25 +124,18 @@ function getTrainingData() {
 						*/
 					});
 					requests--;
+					if (!requests) {
+						setTimeout(function(){
+							if (!requests) {
+								console.log(list);
+								formatData(list);
+							}
+						},delay);
+					}
 				});
 				requests++;
 			});
 		});
-	//});
-	//var flag = false;
-	//while (true) {
-		setTimeout(function(){
-			//if ((!requests)&&flag) {
-				console.log(list);
-				formatData(list);
-				//return;
-			//}
-			//if (!requests) {
-				//flag = true;
-			//}
-		},delay); //hopefully this works
-	//}
-	console.log('done getTrainingData');
 }
 /*
 function processHistory() {
@@ -168,14 +171,13 @@ function formatData(list) {
 	console.log('started formatData');
 
 	//still don't know how to do things at the end of async functions
-	console.log(list);
 	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
 	var requests = 0;
-	chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) {
+	chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) {
 		data.forEach(function (page) {
-			var url = page.url.split('/')[0]+'//'+page.url.split('/')[2];
+			var url = parseUrl(page.url);
 			//console.log(url);
 			//console.log(contains.call(siteList, url));
 			if (contains.call(siteList, url) > -1) {
@@ -185,7 +187,7 @@ function formatData(list) {
 						//get date, time etc for training
 						//var innerRequests = 0;
 						var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
-						var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf, 0);
+						var outputArray = Array.apply(null, Array(numSites)).map(Number.prototype.valueOf, 0);
 						outputArray[contains.call(siteList, url)] = 1;
 						var date = new Date(visit.visitTime);
 						inputArray[date.getHours()] = 1;
@@ -199,24 +201,19 @@ function formatData(list) {
 					//requests--;
 					});
 					requests--;
+					if (!requests) {
+						setTimeout(function(){
+							if (!requests) {
+								console.log(trainingData);
+								return trainingData;
+							}
+						},delay);
+					}
 				});
 				requests++;
 			}
 		});
 	});
-	//var flag = false;
-	//while (true) {
-		setTimeout(function(){
-			//if ((!requests)&&flag) {
-				console.log(trainingData);
-				return trainingData;
-			//}
-			//if (!requests) {
-				//flag = true;
-			//}
-		},delay); //hopefully this works
-	//}
-	console.log('done formatData');
 }
 
 function retrain() {
@@ -241,6 +238,8 @@ function timeElapsed() {
 	console.log('done timeElapsed');
 }
 
+//@Nick going to swap this out for a find nth greatest index
+/*
 function findIndexOfGreatest(array) {
   var greatest;
   var indexOfGreatest;
@@ -252,6 +251,36 @@ function findIndexOfGreatest(array) {
   }
   console.log(indexOfGreatest);
   return indexOfGreatest;
+}
+*/
+
+function findNthGreatestIndex(array,n) {
+	return contains.call(array,array.sort(function(a, b){return b-a})[n]);
+}
+
+function checkRecentVisit(link,array,n) {
+	console.log(link);
+	if (!link) { //checks if there are no pages left on the list
+		return;
+	}
+	var requests = 0;
+	chrome.history.search({text: link, startTime: Date.now()-ignoreTime, maxResults: maxPages}, function(data) {
+		if (data.length) {
+			return (findLink(array,n+1));
+		}
+		else {
+			console.log(link);
+			chrome.tabs.update({url: link});
+		}
+	});
+}
+
+function findLink(array,n) {
+	if (n==numSites) {
+		return;
+	}
+	var link = siteList[findNthGreatestIndex(array,n)];
+	checkRecentVisit(link,array,n);
 }
 
 function openTabs() {
@@ -269,11 +298,11 @@ function openTabs() {
 
 	//need to get current tabs, and choose output so there are no duplicate tabs
 	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
-	link = siteList[findIndexOfGreatest(result)];	
-	console.log(result)
-	console.log(link)
-
-	chrome.tabs.update({url: link});
+		chrome.tabs.getSelected(function(tab) {
+			if (!tab.url||tab.url==defaultTabUrl) { //this only works if the user hasn't set a different default for new tab - i couldn't find this in the api
+				findLink(result,0); //moved some stuff to chain async calls together
+			}
+		});
 	console.log('done openTabs')
 }
 
