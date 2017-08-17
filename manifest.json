@@ -21,6 +21,7 @@
       "js": [ "synaptic.js" ]
     }
   ],
+  "options_page": "options.html",
   "permissions": [
     "history",
     "tabs",
