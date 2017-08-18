@@ -10,7 +10,8 @@
   },
   "background": {
     "scripts": [
-      "background.js"
+      "background.js",
+	  "options.js"
     ],
     "persistent": false
   },
