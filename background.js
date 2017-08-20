@@ -8,6 +8,8 @@ var maxUrlNumber = 20; //most possible urls to open
 var siteList = ['']; //array of top website names
 var numSites = 20;
 
+var ready = false; //controls if the neural network is ready to use
+
 var StorageArea = chrome.storage.local;
 
 var contains = function (needle) { //ripped off stackoverflow
@@ -40,7 +42,7 @@ var contains = function (needle) { //ripped off stackoverflow
 
 function trainOnInstall() {
 	console.log('trainOnInstall started');
-
+	ready = false;
 	trainingData = getTrainingData(); //not sure where to put this?
 
 	//--------------------------------------Neural Network Stuff
@@ -57,7 +59,6 @@ function trainOnInstall() {
 		hidden: [hidden],
 		output: outputLayer
 	});
-	console.log(myNetwork.toJSON());
 	//@Lawrence you save the entire network as a JSON not just the thetas
 	StorageArea.set({ 'myNetwork': myNetwork.toJSON() }, function () {
 	});
@@ -205,7 +206,7 @@ function formatData(list) {
 			return trainingData;
 		},delay);
 	//}
-
+	ready = true;
 	console.log('done formatData');
 }
 
@@ -259,22 +260,16 @@ function openTabs() {
 	//need to get current tabs, and choose output so there are no duplicate tabs
 	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
 	link = siteList[findIndexOfGreatest(result)];
-	console.log(link);
-	console.log('Current Tabs:');
 	var isNew = true;
 	chrome.tabs.query({}, function(tabs){ //makes sure an already open tab doesn't open
 		for (var i = 0; i < tabs.length; i++) {
 			tab = tabs[i].url.substring(tabs[i].url.indexOf('/')+2, tabs[i].url.indexOf('/', 9));
-			console.log(tab)
 			if (tab == link) {
 				result[findIndexOfGreatest(result)] = 0;
 				link = siteList[findIndexOfGreatest(result)];
 				i = 0;
 			}
 		}
-		console.log('Final Link:')
-		console.log(link)
-
 		chrome.tabs.update({url: 'http://'+link});
 		console.log('done openTabs')
 
@@ -302,10 +297,8 @@ chrome.runtime.onStartup.addListener(
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {
-				if (tab.url == 'chrome://newtab/'){ //stops it from replacing urls that are opened
+				if (tab.url == 'chrome://newtab/' && ready){ //stops it from replacing urls that are opened
 					openTabs();
-				} else {
-					console.log(tab.url)
 				}
 
 		});
