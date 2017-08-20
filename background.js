@@ -2,13 +2,17 @@ var myNetwork; //will be network
 
 var retrainTime = 6.048e+8; //num of milliseconds in a week
 var historyTime = 6.048e+8; //num of milliseconds in a week
-var delay = 100000;
+var delay = 10000; //10s 
+var openTime = 500;
+var ignoreTime = 3600000; //1 hr
 var maxUrlNumber = 20; //most possible urls to open
+var maxPages = 2147483647; //largest possible integer
 
 var siteList = ['']; //array of top website names
 var numSites = 20;
 
 var ready = false; //controls if the neural network is ready to use
+var defaultTabUrl = 'chrome://newtab/';
 
 var StorageArea = chrome.storage.local;
 
@@ -39,6 +43,10 @@ var contains = function (needle) { //ripped off stackoverflow
 
 	return indexOf.call(this, needle);
 };
+
+function parseUrl(url) {
+	return url;
+}
 
 function trainOnInstall() {
 	console.log('trainOnInstall started');
@@ -91,24 +99,24 @@ function getTrainingData() {
 	console.log('started getTrainingData');
 
 	var list = {};
-	//var requests = 0;
+	var requests = 0;
 	//StorageArea.set({ 'count': 0 }, function () {
-		chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
+		chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
 			data.forEach(function (page) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
 					visits.forEach(function (visit) {
-						url = page.url.split('/')[2];
+						var url = parseUrl(page.url);
 						if (url in list)
 							list[url]++; //@Lawrence pre sure list[url]++ works
 						else
 							list[url] = 0;
-						//requests--;
+//requests--;
 						//create training data idk
 						/*
 						StorageArea.get('count', function (count) {
-							StorageArea.set({ [count + '.id']: count, [count + '.url']: page.url.split('/')[0], [count + '.time']: page.visitTime }, function () { //@Lawrence the square brackets fix this
+							StorageArea.set({ [count '.id']: count, [count '.url']: page.url.split('/')[0], [count '.time']: page.visitTime }, function () { //@Lawrence the square brackets fix this
 								StorageArea.get('count', function (count) {
-									StorageArea.set({ 'count': count + 1 }, function () {
+									StorageArea.set({ 'count': count 1 }, function () {
 										console.log(count);
 										requests--;
 									});
@@ -118,18 +126,19 @@ function getTrainingData() {
 						});
 						*/
 					});
+					requests--;
+					if (!requests) {
+						setTimeout(function(){
+							if (!requests) {
+								console.log(list);
+								formatData(list);
+							}
+						},delay);
+					}
 				});
+				requests++;
 			});
 		});
-	//});
-	//if (!requests) {
-		setTimeout(function(){
-			console.log(list);
-			formatData(list);
-		},delay); //hopefully this works
-	//}
-
-	console.log('done getTrainingData');
 }
 /*
 function processHistory() {
@@ -165,14 +174,13 @@ function formatData(list) {
 	console.log('started formatData');
 
 	//still don't know how to do things at the end of async functions
-	//console.log(list);
 	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
-	//var requests = 0;
-	chrome.history.search({ text: '', startTime: Date.now() - historyTime }, function (data) {
+	var requests = 0;
+	chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) {
 		data.forEach(function (page) {
-			var url = page.url.split('/')[2];
+			var url = parseUrl(page.url);
 			//console.log(url);
 			//console.log(contains.call(siteList, url));
 			if (contains.call(siteList, url) > -1) {
@@ -182,7 +190,7 @@ function formatData(list) {
 						//get date, time etc for training
 						//var innerRequests = 0;
 						var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
-						var outputArray = Array.apply(null, Array(20)).map(Number.prototype.valueOf, 0);
+						var outputArray = Array.apply(null, Array(numSites)).map(Number.prototype.valueOf, 0);
 						outputArray[contains.call(siteList, url)] = 1;
 						var date = new Date(visit.visitTime);
 						inputArray[date.getHours()] = 1;
@@ -195,20 +203,23 @@ function formatData(list) {
 						//console.log(trainingData);
 					//requests--;
 					});
+					requests--;
+					if (!requests) {
+						setTimeout(function(){
+							if (!requests) {
+								console.log(trainingData);
+                                ready = true;
+                                return trainingData;
+							}
+						},delay);
+					}
 				});
-			//requests++;
+				requests++;
 			}
 		});
 	});
-	//if (!requests) {
-		setTimeout(function(){
-		    console.log(trainingData);
-			return trainingData;
-		},delay);
-	//}
-	ready = true;
-	console.log('done formatData');
 }
+
 
 function retrain() {
 	console.log('started retrain');
@@ -231,7 +242,7 @@ function timeElapsed() {
 	}); //@Lawrence I think this is how you retrieve data
 	console.log('done timeElapsed');
 }
-
+/*
 function findIndexOfGreatest(array) {
   var greatest;
   var indexOfGreatest;
@@ -242,6 +253,35 @@ function findIndexOfGreatest(array) {
     }
   }
   return indexOfGreatest;
+}
+*/
+function findNthGreatestIndex(array,n) {
+	return contains.call(array,array.sort(function(a, b){return b-a})[n]);
+}
+
+function checkRecentVisit(link,array,n) {
+	console.log(link);
+	if (!link) { //checks if there are no pages left on the list
+		return;
+	}
+	var requests = 0;
+	chrome.history.search({text: link, startTime: Date.now()-ignoreTime, maxResults: maxPages}, function(data) {
+		if (data.length) {
+			return (findLink(array,n+1));
+		}
+		else {
+			console.log(link);
+			chrome.tabs.update({url: link});
+		}
+	});
+}
+
+function findLink(array,n) {
+	if (n==numSites) {
+		return;
+	}
+	var link = siteList[findNthGreatestIndex(array,n)];
+	checkRecentVisit(link,array,n);
 }
 
 function openTabs() {
@@ -259,6 +299,7 @@ function openTabs() {
 
 	//need to get current tabs, and choose output so there are no duplicate tabs
 	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
+	/*
 	link = siteList[findIndexOfGreatest(result)];
 	var isNew = true;
 	chrome.tabs.query({}, function(tabs){ //makes sure an already open tab doesn't open
@@ -270,10 +311,13 @@ function openTabs() {
 				i = 0;
 			}
 		}
-		chrome.tabs.update({url: 'http://'+link});
+		chrome.tabs.update({url: link});
 		console.log('done openTabs')
 
 	});
+	*/
+	findLink(result,0); //moved some stuff to chain async calls together
+	console.log('done openTabs')
 }
 
 chrome.runtime.onInstalled.addListener(
@@ -297,7 +341,7 @@ chrome.runtime.onStartup.addListener(
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {
-				if (tab.url == 'chrome://newtab/' && ready){ //stops it from replacing urls that are opened
+				if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
 					openTabs();
 				}
 
