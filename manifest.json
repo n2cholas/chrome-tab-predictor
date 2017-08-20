@@ -19,7 +19,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": [ "synaptic.js" ]
+      "js": [ "synaptic.js", "options.js" ]
     }
   ],
   "options_page": "options.html",
