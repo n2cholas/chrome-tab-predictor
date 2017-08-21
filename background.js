@@ -1,6 +1,9 @@
+var StorageArea = chrome.storage.local;
 var myNetwork; //will be network
 
 var retrainTime = 6.048e+8; //num of milliseconds in a week
+StorageArea.set({ 'retrainTime': retrainTime}); //so options.js can access this
+
 var historyTime = 6.048e+8; //num of milliseconds in a week
 var delay = 10000; //10s 
 var openTime = 500;
@@ -14,7 +17,6 @@ var numSites = 20;
 var ready = false; //controls if the neural network is ready to use
 var defaultTabUrl = 'chrome://newtab/';
 
-var StorageArea = chrome.storage.local;
 
 var contains = function (needle) { //ripped off stackoverflow
 	// Per spec, the way to identify NaN is that it is not equal to itself
@@ -74,10 +76,6 @@ function trainOnInstall() {
 	StorageArea.set({ 'time': Date.now() }, function () {
 	});
 
-	//save amount of time before train
-	StorageArea.set({ 'retrainTime': retrainTime }, function () {
-	});
-
 	console.log('done trainOnInstall');
 }
 /*
@@ -96,6 +94,11 @@ function getTrainingData() {
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
 	//var promises = [];
+	blockedSites = "";
+	StorageArea.get('blockedSites', function(blocked ) {
+		blockedSites = blocked;
+	});
+
 	console.log('started getTrainingData');
 
 	var list = {};
@@ -126,6 +129,9 @@ function getTrainingData() {
 						});
 						*/
 					});
+					//Keeps removing junk from the end of URLs:
+					
+
 					requests--;
 					if (!requests) {
 						setTimeout(function(){
@@ -338,6 +344,13 @@ chrome.runtime.onStartup.addListener(
 		console.log('done chrome.runtime.onStartup')
 	});
 
+chrome.tabs.onRemoved.addListener(
+	function() {
+		if (timeElapsed() > retrainTime) {
+			retrain();
+		}
+});
+	
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {

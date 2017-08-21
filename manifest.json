@@ -10,8 +10,7 @@
   },
   "background": {
     "scripts": [
-      "background.js",
-	  "options.js"
+      "background.js"
     ],
     "persistent": false
   },
@@ -22,7 +21,10 @@
       "js": [ "synaptic.js", "options.js" ]
     }
   ],
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html",
+    "chrome_style": true
+  },
   "permissions": [
     "history",
     "tabs",
