@@ -10,6 +10,7 @@ var maxPages = 2147483647; //largest possible integer
 
 var siteList = ['']; //array of top website names
 var numSites = 20;
+var minNumVisits = 5; 
 
 var ready = false; //controls if the neural network is ready to use
 var defaultTabUrl = 'chrome://newtab/';
@@ -170,8 +171,36 @@ function processHistory() {
 	console.log('done processHistory');
 }
 */
+
+function reduceUrl(url) {
+	var lastChar = url.charAt(url.length-1);
+	if (lastChar!='/') {
+		return url.slice(0,url.lastIndexOf('/'));
+	}
+	else {
+		return url.slice(0,url.length-1);
+	}
+}
+
+function isValid(url) {
+	return url.split('/').length>2&&url.split('/')[2]!='';
+}
+
 function formatData(list) {
 	console.log('started formatData');
+	
+	//go through url list
+	Object.keys(list).forEach(function(url){
+		while ((!(url in list)||list[url]<minNumVisits)&&isValid(url)) {
+			console.log(url+' '+list[url]+' '+isValid(url));
+			var oldUrl = url;
+			url = reduceUrl(url);
+			if (url in list) {
+				list[url] += list[oldUrl];
+				delete list[oldUrl];
+			}
+		}
+	});
 
 	//still don't know how to do things at the end of async functions
 	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
