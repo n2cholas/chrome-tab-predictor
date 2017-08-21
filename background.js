@@ -306,7 +306,10 @@ function checkRecentVisit(link,array,n) {
 		}
 		else {
 			console.log(link);
-			chrome.tabs.update({url: link});
+			if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
+					chrome.tabs.update({url: link});
+			}
+			
 		}
 	});
 }
@@ -383,10 +386,7 @@ chrome.tabs.onRemoved.addListener(
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {
-				if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
-					openTabs();
-				}
-
+				openTabs();
 		});
 
 	});
