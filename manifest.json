@@ -2,7 +2,7 @@
   "name": "Chrome Tab Predictor",
   "version": "0.0.1",
   "manifest_version": 2,
-  "description": "This chrome extension will use the user's history to predictively open a web-page every time a new tab is opened.",
+  "description": "Automatically predicts what website you want to visit when you open a new tab.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
