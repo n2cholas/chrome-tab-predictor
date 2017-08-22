@@ -192,13 +192,39 @@ function isValid(url) {
 	return url.split('/').length>2&&url.split('/')[2]!='';
 }
 
+
+function checkBlockedSites(link) {
+	var StorageArea = chrome.storage.local;
+	StorageArea.get('blockedSites', function(blockedSites){
+		if (!blockedSites && blockedSites !== "[object Object]") {
+			console.log(typeof(blockedSites))
+			var blocked = [];
+			if (blockedSites.indexOf('\n')!==-1) { //hopefully nobody's going to do anything that isn't space or newline separated
+				blocked = blockedSites.replace(' ','').split('\n');
+			}
+			else {
+				blocked = blockedSites.split(' ');
+			}
+			blocked.forEach(function(blockedUrl){
+					if (blockedUrl!==''&&(link.indexOf(blockedUrl)!==-1||blockedUrl.indexOf(link)!==-1)) {
+						return false;
+					}
+			});
+			return true;
+		}
+		else {
+			return false;
+		}
+	});
+}
+
 function formatData(list) {
 	console.log('started formatData');
 	
 	//go through url list
 	Object.keys(list).forEach(function(url){
 		while ((!(url in list)||list[url]<minNumVisits)&&isValid(url)) {
-			console.log(url+' '+list[url]+' '+isValid(url));
+			//console.log(url+' '+list[url]+' '+isValid(url));
 			var oldUrl = url;
 			url = reduceUrl(url);
 			if (url in list) {
@@ -300,16 +326,18 @@ function checkRecentVisit(link,array,n) {
 		return;
 	}
 	var requests = 0;
+	
 	chrome.history.search({text: link, startTime: Date.now()-ignoreTime, maxResults: maxPages}, function(data) {
-		if (data.length) {
+		if (data.length||checkBlockedSites(link)) {
 			return (findLink(array,n+1));
 		}
 		else {
 			console.log(link);
-			if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
-					chrome.tabs.update({url: link});
-			}
-			
+			chrome.tabs.getSelected(null, function (tab) {
+				if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
+  					chrome.tabs.update({url: link});
+  				}
+			});
 		}
 	});
 }
@@ -386,7 +414,9 @@ chrome.tabs.onRemoved.addListener(
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {
-				openTabs();
+			if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
+  					openTabs();
+  				}
 		});
 
 	});

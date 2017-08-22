@@ -18,7 +18,6 @@ function load() {
 	console.log("test")
 	StorageArea.get('blockedSites', function(blockedSites){
 		if (blockedSites == null || blockedSites == "[object Object]") {
-			alert("test")
 			StorageArea.set({ 'blockedSites': "" }, function () {
 			});
 		} else {
