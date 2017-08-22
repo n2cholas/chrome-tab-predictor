@@ -7,7 +7,7 @@ StorageArea.set({ 'retrainTime': retrainTime}); //so options.js can access this
 var historyTime = 6.048e+8; //num of milliseconds in a week
 var delay = 10000; //10s 
 var openTime = 500;
-var ignoreTime = 3600000; //1 hr
+var ignoreTime = 3600000; //1 hr 
 var maxUrlNumber = 20; //most possible urls to open
 var maxPages = 2147483647; //largest possible integer
 
@@ -193,11 +193,12 @@ function isValid(url) {
 }
 
 
-function checkBlockedSites(link) {
+function checkBlockedSites(link,callbackTrue,callbackFalse) {
 	var StorageArea = chrome.storage.local;
-	StorageArea.get('blockedSites', function(blockedSites){
-		if (!blockedSites && blockedSites !== "[object Object]") {
-			console.log(typeof(blockedSites))
+	StorageArea.get('blockedSites', function(blockedSitesData){
+		blockedSites = blockedSitesData.blockedSites;
+		if (blockedSites) {
+			//console.log(typeof(blockedSites))
 			var blocked = [];
 			if (blockedSites.indexOf('\n')!==-1) { //hopefully nobody's going to do anything that isn't space or newline separated
 				blocked = blockedSites.replace(' ','').split('\n');
@@ -205,15 +206,22 @@ function checkBlockedSites(link) {
 			else {
 				blocked = blockedSites.split(' ');
 			}
+			console.log(blocked);
+			var flag = false;
 			blocked.forEach(function(blockedUrl){
 					if (blockedUrl!==''&&(link.indexOf(blockedUrl)!==-1||blockedUrl.indexOf(link)!==-1)) {
-						return false;
+						flag = true;
 					}
 			});
-			return true;
+			if (flag) {
+				callbackTrue();
+			}
+			else {
+				callbackFalse();
+			}
 		}
 		else {
-			return false;
+			callbackFalse();
 		}
 	});
 }
@@ -328,15 +336,20 @@ function checkRecentVisit(link,array,n) {
 	var requests = 0;
 	
 	chrome.history.search({text: link, startTime: Date.now()-ignoreTime, maxResults: maxPages}, function(data) {
-		if (data.length||checkBlockedSites(link)) {
+		if (data.length) {
 			return (findLink(array,n+1));
 		}
 		else {
-			console.log(link);
-			chrome.tabs.getSelected(null, function (tab) {
-				if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
-  					chrome.tabs.update({url: link});
-  				}
+			checkBlockedSites(link,function() {
+				return (findLink(array,n+1));
+			},
+			function() {
+				console.log(link);
+				chrome.tabs.getSelected(null, function (tab) {
+					if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
+						chrome.tabs.update({url: link});
+					}
+				});
 			});
 		}
 	});
@@ -424,7 +437,34 @@ chrome.tabs.onCreated.addListener(
 	// i intended opentabs to be for multiple tabs on startup sorry the naming is confusing
 	// @Lawrence I'm removing goto links for now, we'll implement multiple tabs later
 
-
+chrome.runtime.onMessage.addListener(function(req,sender,res) {
+	var StorageArea = chrome.storage.local;
+	if (req.origin==='blockSites') {
+		//console.log(req.sites);
+		StorageArea.set({'blockedSites': req.sites}, function() {
+			res({});
+		});
+	}
+	else if (req.origin==='retrain') {
+		StorageArea.set({'date': req.date }, function () {
+			res({});
+		});
+	}
+	else if (req.origin==='load') {
+		//console.log('got load')
+		StorageArea.get('blockedSites', function(blockedSites){
+			//console.log(blockedSites);
+			if (!blockedSites) {
+				res({blockedSites:''});
+			} else {
+				res({blockedSites:blockedSites.blockedSites})
+			}
+		});
+	}
+	//console.log('got message');
+	return true;
+});
+	
 
 
 
