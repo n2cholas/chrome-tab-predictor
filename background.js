@@ -5,7 +5,7 @@ var retrainTime = 6.048e+8; //num of milliseconds in a week
 StorageArea.set({ 'retrainTime': retrainTime}); //so options.js can access this
 
 var historyTime = 6.048e+8; //num of milliseconds in a week
-var delay = 10000; //10s 
+var delay = 10000; //delay to wait for history retrieval
 var openTime = 500;
 var ignoreTime = 3600000; //1 hr 
 var maxUrlNumber = 20; //most possible urls to open
@@ -94,7 +94,7 @@ function getTrainingData() {
 		];
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
-	//var promises = [];
+
 	blockedSites = "";
 	StorageArea.get('blockedSites', function(blocked ) {
 		blockedSites = blocked;
@@ -114,24 +114,8 @@ function getTrainingData() {
 							list[url]++; //@Lawrence pre sure list[url]++ works
 						else
 							list[url] = 0;
-//requests--;
-						//create training data idk
-						/*
-						StorageArea.get('count', function (count) {
-							StorageArea.set({ [count '.id']: count, [count '.url']: page.url.split('/')[0], [count '.time']: page.visitTime }, function () { //@Lawrence the square brackets fix this
-								StorageArea.get('count', function (count) {
-									StorageArea.set({ 'count': count 1 }, function () {
-										console.log(count);
-										requests--;
-									});
-									requests++;
-								});
-							});
-						});
-						*/
 					});
 					//Keeps removing junk from the end of URLs:
-					
 
 					requests--;
 					if (!requests) {
@@ -147,36 +131,6 @@ function getTrainingData() {
 			});
 		});
 }
-/*
-function processHistory() {
-	//not sure where to start training, since all these are asynchronous
-	//read in all data and sort/parse urls
-	console.log('started processHistory');
-
-	var list = {};
-	var requests = 0;
-	StorageArea.get('count', function (count) {
-		for (var i = 0; i < count; i++) {
-			StorageArea.get(i + '.url', function (url) {
-				if (url in list)
-					list[url]++; //@Lawrence pre sure list[url]++ works
-				else
-					list[url] = 0;
-				requests--;
-			});
-			requests++;
-		}
-	});
-	if (!requests) {
-		setTimeout(function(){
-			console.log(list);
-			formatData(list);
-		},delay);
-	}
-
-	console.log('done processHistory');
-}
-*/
 
 function reduceUrl(url) {
 	var lastChar = url.charAt(url.length-1);
