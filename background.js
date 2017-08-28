@@ -10,20 +10,19 @@ StorageArea.set({ 'retrainTime': retrainTime}); //so options.js can access this
 
 var historyTime = 6.048e+8; //num of milliseconds in a week
 var delay = 10000; //delay to wait for history retrieval
-var openTime = 500;
 var ignoreTime = 3600000; //1 hr 
 var maxUrlNumber = 20; //most possible urls to open
 var maxPages = 2147483647; //largest possible integer
 
 var siteList = ['']; //array of top website names
-var numSites = 20;
-var minNumVisits = 5; 
+var numSites = 20; //number of top sites to open
+var minNumVisits = 5; //minimum number of visits to be considered a top site
 
 var ready = false; //controls if the neural network is ready to use
-var defaultTabUrl = 'chrome://newtab/';
+var defaultTabUrl = 'chrome://newtab/'; //chrome's default new tab url
 
-
-var contains = function (needle) { //ripped off stackoverflow
+//return index of an element in an array
+var contains = function (needle) {
 	// Per spec, the way to identify NaN is that it is not equal to itself
 	var findNaN = needle !== needle;
 	var indexOf;
@@ -51,10 +50,12 @@ var contains = function (needle) { //ripped off stackoverflow
 	return indexOf.call(this, needle);
 };
 
+//parse url - may be replaced in the future with a different method
 function parseUrl(url) {
 	return url;
 }
 
+//get data from history and train neural network
 function trainOnInstall() {
 	console.log('trainOnInstall started');
 	ready = false; //becomes true when training is finished
@@ -68,7 +69,6 @@ function trainOnInstall() {
 	//maybe first get the neural network from the storage first, then if not, activate below code
 	inputLayer.project(hidden); //fully connects input to hidden layer
 	hidden.project(outputLayer); //full connects hidden layer to output
-
 	myNetwork = new synaptic.Network({
 		input: inputLayer,
 		hidden: [hidden],
@@ -83,6 +83,8 @@ function trainOnInstall() {
 
 	console.log('done trainOnInstall');
 }
+
+//get training data from history
 function getTrainingData() {
 	//we need some training data in this format: 
 	/*
@@ -94,6 +96,7 @@ function getTrainingData() {
 		So in this example, there are 2 inputs and 3 outputs (ours has (24+7) inputs and 20 outputs atm)
 	*/
 
+	//read blocked sites from storage
 	blockedSites = "";
 	StorageArea.get('blockedSites', function(blocked ) {
 		blockedSites = blocked;
@@ -101,21 +104,21 @@ function getTrainingData() {
 
 	console.log('started getTrainingData');
 
+	//iterate through all sites in history
 	var list = {};
 	var requests = 0;
-	//StorageArea.set({ 'count': 0 }, function () {
-		chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) { //starttime should be "milliseconds since the epoch whatever that means
+		chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) { 
 			data.forEach(function (page) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
+					//create hash table with url and number of visits
 					visits.forEach(function (visit) {
 						var url = parseUrl(page.url);
 						if (url in list)
-							list[url]++; //@Lawrence pre sure list[url]++ works
+							list[url]++; 
 						else
 							list[url] = 0;
 					});
-					//Keeps removing junk from the end of URLs:
-
+					//track if all async calls are complete
 					requests--;
 					if (!requests) {
 						setTimeout(function(){
@@ -131,6 +134,7 @@ function getTrainingData() {
 		});
 }
 
+//reduce url, e.g. reddit.com/r/liverpoolfc/ becomes reddit.com/r/
 function reduceUrl(url) {
 	var lastChar = url.charAt(url.length-1);
 	if (lastChar!='/') {
@@ -141,19 +145,20 @@ function reduceUrl(url) {
 	}
 }
 
+//detects if a url is valid
 function isValid(url) {
 	return url.split('/').length>2&&url.split('/')[2]!='';
 }
 
-
+//check if a site is blocked, then execute callbacks depending on result
 function checkBlockedSites(link,callbackTrue,callbackFalse) {
 	var StorageArea = chrome.storage.local;
 	StorageArea.get('blockedSites', function(blockedSitesData){
 		blockedSites = blockedSitesData.blockedSites;
+		//read in list of blocked sites
 		if (blockedSites) {
-			//console.log(typeof(blockedSites))
 			var blocked = [];
-			if (blockedSites.indexOf('\n')!==-1) { //hopefully nobody's going to do anything that isn't space or newline separated
+			if (blockedSites.indexOf('\n')!==-1) {
 				blocked = blockedSites.replace(' ','').split('\n');
 			}
 			else {
@@ -179,13 +184,14 @@ function checkBlockedSites(link,callbackTrue,callbackFalse) {
 	});
 }
 
+//format history data so it can be trained
 function formatData(list) {
 	console.log('started formatData');
 	
-	//go through url list
+	//go through url list and remove least common urls
+	//for example, if messenger.com/john.doe doesn't have many visits, it is removed from the hash table and its visits are assigned to messenger.com
 	Object.keys(list).forEach(function(url){
 		while ((!(url in list)||list[url]<minNumVisits)&&isValid(url)) {
-			//console.log(url+' '+list[url]+' '+isValid(url));
 			var oldUrl = url;
 			url = reduceUrl(url);
 			if (url in list) {
@@ -195,15 +201,19 @@ function formatData(list) {
 		}
 	});
 
-	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
+	//create list of most visited urls
+	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); 
 	console.log(siteList);
 	var trainingData = [];
 	var requests = 0;
+	//go through history to create training examples
+	//features: days of week, hours of day
 	chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) {
 		data.forEach(function (page) {
 			var url = parseUrl(page.url);
 			if (contains.call(siteList, url) > -1) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
+					//create array of hash tables of inputs and outputs for the neural network
 					visits.forEach(function (visit) {
 						var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
 						var outputArray = Array.apply(null, Array(numSites)).map(Number.prototype.valueOf, 0);
@@ -213,6 +223,7 @@ function formatData(list) {
 						inputArray[date.getDay() + 24] = 1;
 						trainingData.push({ input: inputArray, output: outputArray });
 					});
+					//detect if all async calls are complete
 					requests--;
 					if (!requests) {
 						setTimeout(function(){
@@ -253,10 +264,12 @@ function timeElapsed() { //checks how much time elapsed since last retrain
 	console.log('done timeElapsed');
 }
 
+//find nth greatest index in array
 function findNthGreatestIndex(array,n) {
 	return contains.call(array,array.sort(function(a, b){return b-a})[n]);
 }
 
+//check if opened site has been visited recently
 function checkRecentVisit(link,array,n) {
 	console.log(link);
 	if (!link) { //checks if there are no pages left on the list
@@ -264,11 +277,14 @@ function checkRecentVisit(link,array,n) {
 	}
 	var requests = 0;
 	
+	//search history for target link
 	chrome.history.search({text: link, startTime: Date.now()-ignoreTime, maxResults: maxPages}, function(data) {
 		if (data.length) {
 			return (findLink(array,n+1));
 		}
 		else {
+			//if site is recently visited or blocked, repeat step with a different url
+			//otherwise, open it
 			checkBlockedSites(link,function() {
 				return (findLink(array,n+1));
 			},
@@ -284,6 +300,7 @@ function checkRecentVisit(link,array,n) {
 	});
 }
 
+//selects nth url from list
 function findLink(array,n) {
 	if (n==numSites) {
 		return;
@@ -292,6 +309,7 @@ function findLink(array,n) {
 	checkRecentVisit(link,array,n);
 }
 
+//go to url when new tab is opened
 function openTabs() {
 	console.log('started openTabs');
 	//Code below uses current day and time to get an output from neural network
@@ -349,18 +367,22 @@ chrome.tabs.onCreated.addListener(
 
 	});
 
+//messenger to communicate between options page and background page
 chrome.runtime.onMessage.addListener(function(req,sender,res) {
 	var StorageArea = chrome.storage.local;
+	//set blocked sites in local storage
 	if (req.origin==='blockSites') {
 		StorageArea.set({'blockedSites': req.sites}, function() {
 			res({});
 		});
 	}
+	//retrain
 	else if (req.origin==='retrain') {
 		StorageArea.set({'date': req.date }, function () {
 			res({});
 		});
 	}
+	//send blocked sites to options page
 	else if (req.origin==='load') {
 
 		StorageArea.get('blockedSites', function(blockedSites){
