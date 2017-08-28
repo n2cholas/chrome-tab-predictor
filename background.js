@@ -1,3 +1,7 @@
+/* Chrome Tab Predictor
+ * By: Nicholas Vadivelu and Lawrence Pang
+ */
+
 var StorageArea = chrome.storage.local;
 var myNetwork; //will be network
 
@@ -53,10 +57,10 @@ function parseUrl(url) {
 
 function trainOnInstall() {
 	console.log('trainOnInstall started');
-	ready = false;
-	trainingData = getTrainingData(); //not sure where to put this?
+	ready = false; //becomes true when training is finished
+	trainingData = getTrainingData();
 
-	//--------------------------------------Neural Network Stuff
+	//--------------------------------------Neural Network Setup
 	var inputLayer = new synaptic.Layer(24 + 7); // the 24 inputs for hour, 7 inputs for day
 	var hidden = new synaptic.Layer(50); // hidden layer with 3 elements
 	var outputLayer = new synaptic.Layer(numSites); // twenty outputs i.e. twenty sites to choose from
@@ -70,7 +74,7 @@ function trainOnInstall() {
 		hidden: [hidden],
 		output: outputLayer
 	});
-	//@Lawrence you save the entire network as a JSON not just the thetas
+
 	StorageArea.set({ 'myNetwork': myNetwork.toJSON() }, function () {
 	});
 	//set date
@@ -79,11 +83,6 @@ function trainOnInstall() {
 
 	console.log('done trainOnInstall');
 }
-/*
-function readHistoryInnerAsync(count,promises) {
-	promises.push(new Promise(function(res,rej){}));
-}
-*/
 function getTrainingData() {
 	//we need some training data in this format: 
 	/*
@@ -196,7 +195,6 @@ function formatData(list) {
 		}
 	});
 
-	//still don't know how to do things at the end of async functions
 	siteList = Object.keys(list).sort(function (a, b) { return list[b] - list[a] }).slice(0,maxUrlNumber); //array of urls
 	console.log(siteList);
 	var trainingData = [];
@@ -204,27 +202,16 @@ function formatData(list) {
 	chrome.history.search({ text: '', startTime: Date.now() - historyTime, maxResults: maxPages }, function (data) {
 		data.forEach(function (page) {
 			var url = parseUrl(page.url);
-			//console.log(url);
-			//console.log(contains.call(siteList, url));
 			if (contains.call(siteList, url) > -1) {
 				chrome.history.getVisits({ url: page.url }, function (visits) {
-					//console.log("visit");
 					visits.forEach(function (visit) {
-						//get date, time etc for training
-						//var innerRequests = 0;
 						var inputArray = Array.apply(null, Array(31)).map(Number.prototype.valueOf, 0);
 						var outputArray = Array.apply(null, Array(numSites)).map(Number.prototype.valueOf, 0);
 						outputArray[contains.call(siteList, url)] = 1;
 						var date = new Date(visit.visitTime);
 						inputArray[date.getHours()] = 1;
 						inputArray[date.getDay() + 24] = 1;
-							//innerRequests--;
-						//innerRequests++;
-						//console.log(inputArray);
-						//console.log(outputArray);
 						trainingData.push({ input: inputArray, output: outputArray });
-						//console.log(trainingData);
-					//requests--;
 					});
 					requests--;
 					if (!requests) {
@@ -243,14 +230,14 @@ function formatData(list) {
 	});
 }
 
-
+// Retrain the neural network
 function retrain() {
 	console.log('started retrain');
 
 	trainingData = getTrainingData();
-	var learningRate = 0.4;
+	var learningRate = 0.2; //This seems to work well
 
-	for (var i = 0; i < trainingData.length; i++) {
+	for (var i = 0; i < trainingData.length; i++) { //loop training the network
 		myNetwork.activate(trainingData[i]["input"]);
 		myNetwork.propagate(learningRate, trainingData[i]["output"]);
 	}
@@ -258,26 +245,14 @@ function retrain() {
 	console.log('done retrain');
 }
 
-function timeElapsed() {
+function timeElapsed() { //checks how much time elapsed since last retrain
 	console.log('started timeElapsed');
-	return StorageArea.get('date', function (date) {
+	return StorageArea.get('date', function (date) { 
 		return Date.now() - date;
-	}); //@Lawrence I think this is how you retrieve data
+	}); 
 	console.log('done timeElapsed');
 }
-/*
-function findIndexOfGreatest(array) {
-  var greatest;
-  var indexOfGreatest;
-  for (var i = 0; i < array.length; i++) {
-    if (!greatest || array[i] > greatest) {
-      greatest = array[i];
-      indexOfGreatest = i;
-    }
-  }
-  return indexOfGreatest;
-}
-*/
+
 function findNthGreatestIndex(array,n) {
 	return contains.call(array,array.sort(function(a, b){return b-a})[n]);
 }
@@ -330,36 +305,19 @@ function openTabs() {
 	inputArray[curDay + 24] = 1; //fill in day of week
 	var result = myNetwork.activate(inputArray); //gets the output of the neural network (probabilities)
 
-	//need to get current tabs, and choose output so there are no duplicate tabs
-	//if underscore worked, could just use this function: _.indexOf(arr, _.max(arr))
-	/*
-	link = siteList[findIndexOfGreatest(result)];
-	var isNew = true;
-	chrome.tabs.query({}, function(tabs){ //makes sure an already open tab doesn't open
-		for (var i = 0; i < tabs.length; i++) {
-			tab = tabs[i].url.substring(tabs[i].url.indexOf('/')+2, tabs[i].url.indexOf('/', 9));
-			if (tab == link) {
-				result[findIndexOfGreatest(result)] = 0;
-				link = siteList[findIndexOfGreatest(result)];
-				i = 0;
-			}
-		}
-		chrome.tabs.update({url: link});
-		console.log('done openTabs')
-
-	});
-	*/
 	findLink(result,0); //moved some stuff to chain async calls together
 	console.log('done openTabs')
 }
 
-chrome.runtime.onInstalled.addListener(
+chrome.runtime.onInstalled.addListener( //when installed, it trains and adds listeners
 	function (details) {
 		console.log('started chrome.runtime.onInstalled');
 		trainOnInstall();
 		console.log('done chrome.runtime.onInstalled')
 	});
 
+
+//When chrome first opens, get the network and listen for tabs
 chrome.runtime.onStartup.addListener(
 	function () {
 		console.log('started chrome.runtime.onStartup');
@@ -371,6 +329,8 @@ chrome.runtime.onStartup.addListener(
 		console.log('done chrome.runtime.onStartup')
 	});
 
+//When options menu is closed, the retrain time might be 
+//reset so this function checks if a retrain is scheduled
 chrome.tabs.onRemoved.addListener(
 	function() {
 		if (timeElapsed() > retrainTime) {
@@ -378,23 +338,20 @@ chrome.tabs.onRemoved.addListener(
 		}
 });
 	
+//When a new tab is created, the extension predicts the tab
 chrome.tabs.onCreated.addListener(
 	function () {
 		chrome.tabs.getSelected(null, function (tab) {
 			if ((!tab.url||tab.url==defaultTabUrl) && ready){ //stops it from replacing urls that are opened
   					openTabs();
-  				}
+  		}
 		});
 
 	});
-	// @Lawrence Not sure if this is right, but I replaced the gotoLink with openTabs 
-	// i intended opentabs to be for multiple tabs on startup sorry the naming is confusing
-	// @Lawrence I'm removing goto links for now, we'll implement multiple tabs later
 
 chrome.runtime.onMessage.addListener(function(req,sender,res) {
 	var StorageArea = chrome.storage.local;
 	if (req.origin==='blockSites') {
-		//console.log(req.sites);
 		StorageArea.set({'blockedSites': req.sites}, function() {
 			res({});
 		});
@@ -405,9 +362,9 @@ chrome.runtime.onMessage.addListener(function(req,sender,res) {
 		});
 	}
 	else if (req.origin==='load') {
-		//console.log('got load')
+
 		StorageArea.get('blockedSites', function(blockedSites){
-			//console.log(blockedSites);
+
 			if (!blockedSites) {
 				res({blockedSites:''});
 			} else {
@@ -415,7 +372,6 @@ chrome.runtime.onMessage.addListener(function(req,sender,res) {
 			}
 		});
 	}
-	//console.log('got message');
 	return true;
 });
 	
